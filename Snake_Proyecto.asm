@@ -100,3 +100,45 @@ gameUpdateLoop:
 	beq	$t3, 115, moveDown	# si tecla presionada = 's', ir a moveDown
 	beq	$t3, 0, moveUp		# iniciar el juego moviéndose hacia arriba
 
+moveUp:
+	lw	$s3, snakeArriba	# s3 = direccion snake
+	add	$a0, $s3, $zero		# a0 = direccion de la snake
+	jal	updateSnake
+	
+	# mover a la snake
+	jal 	updateSnakeHeadPosition
+	
+	j	exitMoving 	
+
+moveDown:
+	lw	$s3, snakeAbajo	# s3 = direccion de la snake
+	add	$a0, $s3, $zero	# a0 = direccion de la snake
+	jal	updateSnake
+	
+	# mover a la snake
+	jal 	updateSnakeHeadPosition
+	
+	j	exitMoving
+	
+moveLeft:
+	lw	$s3, snakeIzquierda	# s3 = direccion de la snake
+	add	$a0, $s3, $zero		# a0 = direccion de la snake
+	jal	updateSnake
+	
+	# mover a la snake
+	jal 	updateSnakeHeadPosition
+	
+	j	exitMoving
+	
+moveRight:
+	lw	$s3, snakeDerecha	# s3 = direccion de la snake
+	add	$a0, $s3, $zero		# a0 = direccion de la snake
+	jal	updateSnake
+	
+	# mover a la snake
+	jal 	updateSnakeHeadPosition
+
+	j	exitMoving
+
+exitMoving:
+	j 	gameUpdateLoop		# se devuelve al inicio del loop
