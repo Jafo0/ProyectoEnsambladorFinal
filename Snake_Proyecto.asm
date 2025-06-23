@@ -142,3 +142,136 @@ moveRight:
 
 exitMoving:
 	j 	gameUpdateLoop		# se devuelve al inicio del loop
+	
+updateSnake:
+	addiu 	$sp, $sp, -24	# reservar 24 bytes en la pila
+	sw 	$fp, 0($sp)	# guardar puntero de marco del llamador
+	sw 	$ra, 4($sp)	# guardar dirección de retorno del llamador
+	addiu 	$fp, $sp, 20	# setup updateSnake frame pointer
+	
+	### DIBUJAR CABEZA
+	lw	$t0, xPos		# t0 = xPos of snake
+	lw	$t1, yPos		# t1 = yPos of snake
+	lw	$t2, xConversion	# t2 = 64
+	mult	$t1, $t2		# yPos * 64
+	mflo	$t3			# t3 = yPos * 64
+	add	$t3, $t3, $t0		# t3 = yPos * 64 + xPos
+	lw	$t2, yConversion	# t2 = 4
+	mult	$t3, $t2		# (yPos * 64 + xPos) * 4
+	mflo	$t0			# t0 = (yPos * 64 + xPos) * 4
+	
+	la 	$t1, imagen		# cargar dirección del buffer de video
+	add	$t0, $t1, $t0		# t0 = (yPos * 64 + xPos) * 4 + frame address
+	lw	$t4, 0($t0)		# save original val of pixel in t4
+	sw	$a0, 0($t0)		# store direction plus color on the bitmap display
+	
+	
+	### VELOCIDAD
+	lw	$t2, snakeArriba		# load word snake arriba = 0x0000ff00
+	beq	$a0, $t2, setVelocityUp		# si la direccion de la cabeza y color == snake arriba branch a setVelocityUp
+	
+	lw	$t2, snakeAbajo			# load word snake arriba = 0x0100ff00
+	beq	$a0, $t2, setVelocityDown	# si la direccion de la cabeza y color== snake abajo branch a setVelocitydown
+	
+	lw	$t2, snakeIzquierda		# load word snake arriba = 0x0200ff00
+	beq	$a0, $t2, setVelocityLeft	# si la direccion de la cabeza y color ==snake izq branch a setVelocityUp
+	
+	lw	$t2, snakeDerecha		# load word snake arriba = 0x0300ff00
+	beq	$a0, $t2, setVelocityRight	# si la direccion de la cabeza y color == snake derecha branch a setVelocityUp
+	
+setVelocityUp:
+	addi	$t5, $zero, 0		# set x velocidad a zero
+	addi	$t6, $zero, -1	 	# set y velocidad a -1
+	sw	$t5, xVel		# actualizar velocidad en x
+	sw	$t6, yVel		# actualizar velocidad en y
+	j exitVelocitySet
+	
+setVelocityDown:
+	addi	$t5, $zero, 0		# set x velocidad a zero
+	addi	$t6, $zero, 1 		# set y velocidad a 1
+	sw	$t5, xVel		# actualizar velocidad en x
+	sw	$t6, yVel		# actualizar velocidad en y
+	j exitVelocitySet
+	
+setVelocityLeft:
+	addi	$t5, $zero, -1		# set x velocidad a -1
+	addi	$t6, $zero, 0 		# set y velocidad a zero
+	sw	$t5, xVel		# actualizar velocidad en x
+	sw	$t6, yVel		# actualizar velocidad en y
+	j exitVelocitySet
+	
+setVelocityRight:
+	addi	$t5, $zero, 1		# set x velocidad a 1
+	addi	$t6, $zero, 0 		# set y velocidad ao zero
+	sw	$t5, xVel		# actualizar velocidad en x
+	sw	$t6, yVel		# actualizar velocidad en y
+	j exitVelocitySet
+	
+exitVelocitySet:
+	
+	### LOCALIDAD DE CABEZA
+	li 	$t2, 0x00ff0000			# color rojo
+	bne	$t2, $t4, cabezaNoManzana	# si  la ubicacion de la cabeza no es la manzna  salir
+	
+	jal 	newAppleLocation
+	jal	drawApple
+	j	exitUpdateSnake
+	
+cabezaNoManzana:
+
+	li	$t2, 0x4169E1FF			# color de fondo
+	beq	$t2, $t4, validHeadSquare	# si  la ubicacion de la cabeza  es fondo salirse
+	
+	addi 	$v0, $zero, 10			# salir del programa
+	syscall
+	
+validHeadSquare:
+
+	### QUITA COLA
+	lw	$t0, tail		# t0 = cola
+	la 	$t1, imagen		# cargar dirección del buffer de video
+	add	$t2, $t0, $t1		# t2 = tail ubicacon en el  bitmap display
+	li 	$t3, 0x4169E1FF		#color azul fondo
+	lw	$t4, 0($t2)		# t4 = cola direccion y el color 
+	sw	$t3, 0($t2)		# reemplazar cola con color de fondo
+	
+	### NUEVA COLA
+	lw	$t5, snakeArriba		# load word snake Arriba = 0x0000ff00
+	beq	$t5, $t4, setNextTailUp		# si la direccion de cola y color == snake arriba branch a setNextTailUp
+	
+	lw	$t5, snakeAbajo			# load word snake arrina = 0x0100ff00
+	beq	$t5, $t4, setNextTailDown	# si la direccion de cola y color == snake abajo branch a setNextTailDown
+	
+	lw	$t5, snakeIzquierda		# load word snake arriba = 0x0200ff00
+	beq	$t5, $t4, setNextTailLeft	# si la direccion de cola y el color == snake izq branch a setNextTailLeft
+	
+	lw	$t5, snakeDerecha		# load word snake arriba = 0x0300ff00
+	beq	$t5, $t4, setNextTailRight	# si la direccion de cola y el color == snake derecha branch a setNextTailRight
+	
+setNextTailUp:
+	addi	$t0, $t0, -256		# tail = tail - 256
+	sw	$t0, tail		# guardar  tail en memoria
+	j exitUpdateSnake
+	
+setNextTailDown:
+	addi	$t0, $t0, 256		# tail = tail + 256
+	sw	$t0, tail		# guardar  tail en memoria
+	j exitUpdateSnake
+	
+setNextTailLeft:
+	addi	$t0, $t0, -4		# tail = tail - 4
+	sw	$t0, tail		# guardar  tail en memoria
+	j exitUpdateSnake
+	
+setNextTailRight:
+	addi	$t0, $t0, 4		# tail = tail + 4
+	sw	$t0, tail		# guardar  tail en memoria
+	j exitUpdateSnake
+	
+exitUpdateSnake:
+	
+	lw 	$ra, 4($sp)	# cargar direccion  retorno
+	lw 	$fp, 0($sp)	# restaurar puntero de marco del llamador
+	addiu 	$sp, $sp, 24	# restaurar puntero de pila del llamador
+	jr 	$ra		# retornar al código llamador
+	
