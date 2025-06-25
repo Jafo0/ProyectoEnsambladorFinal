@@ -274,4 +274,23 @@ exitUpdateSnake:
 	lw 	$fp, 0($sp)	# restaurar puntero de marco del llamador
 	addiu 	$sp, $sp, 24	# restaurar puntero de pila del llamador
 	jr 	$ra		# retornar al código llamador
+
+updateSnakeHeadPosition:
+	addiu 	$sp, $sp, -24	# reservar 24 bytes en la pila
+	sw 	$fp, 0($sp)	# guardar puntero de marco del llamador
+	sw 	$ra, 4($sp)	# guardar dirección de retorno del llamador
+	addiu 	$fp, $sp, 20	# setup updateSnake frame
 	
+	lw	$t3, xVel	# load xVel desde la memoria
+	lw	$t4, yVel	# load yVel desde la memoria
+	lw	$t5, xPos	# load xPos desde la memoria
+	lw	$t6, yPos	# load yPos desde la memoria
+	add	$t5, $t5, $t3	# actualizar x pos
+	add	$t6, $t6, $t4	# actualizar y pos
+	sw	$t5, xPos	# store xpos actualizada a la memoria
+	sw	$t6, yPos	# store ypos actualizada a la memoria
+	
+	lw 	$ra, 4($sp)	# load caller's return address
+	lw 	$fp, 0($sp)	# restaurar puntero de marco del llamador
+	addiu 	$sp, $sp, 24	# restaurar puntero de pila del llamador
+	jr 	$ra		# retornar al código llamador
