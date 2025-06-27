@@ -1,5 +1,5 @@
 .data
-	imagen:		.space 0x80000		#512 wide x 256 high pixeles
+	imagen:		.space 0x80000		#512 ancho x 256 alto pixeles
 	xVel:		.word	0		# x velocidad inicio 0
 	yVel:		.word	0		# y velocidad inicio 0
 	xPos:		.word	50		# x posicion
@@ -15,7 +15,7 @@
 	yConversion:	.word	4		# y valor de convertir (x, y) a bitmap display
 	
 .text
-
+###Bitmap  8, 8, 512, 256
 main:
 
 #Dibujar el fondo
@@ -291,6 +291,75 @@ updateSnakeHeadPosition:
 	sw	$t6, yPos	# store ypos actualizada a la memoria
 	
 	lw 	$ra, 4($sp)	# load caller's return address
+	lw 	$fp, 0($sp)	# restaurar puntero de marco del llamador
+	addiu 	$sp, $sp, 24	# restaurar puntero de pila del llamador
+	jr 	$ra		# retornar al código llamador
+
+drawApple:
+	addiu 	$sp, $sp, -24	# reservar 24 bytes en la pila
+	sw 	$fp, 0($sp)	# guardar puntero de marco del llamador
+	sw 	$ra, 4($sp)	# guardar dirección de retorno del llamador
+	addiu 	$fp, $sp, 20	# setup updateSnake frame pointer
+	
+	lw	$t0, ManzanX		# t0 = posicion x de manzana
+	lw	$t1, ManzanY		# t1 = posicion y de manzana
+	lw	$t2, xConversion	# t2 = 64
+	mult	$t1, $t2		# ManzanY * 64
+	mflo	$t3			# t3 = ManzanY * 64
+	add	$t3, $t3, $t0		# t3 = ManzanY * 64 + ManzanX
+	lw	$t2, yConversion	# t2 = 4
+	mult	$t3, $t2		# (manzan y * 64 + manzan x) * 4
+	mflo	$t0			# t0 = (ManzanY * 64 + ManzanX) * 4
+	
+	la 	$t1, imagen		# cargar dirección del buffer de video
+	add	$t0, $t1, $t0		# t0 = (ManzanY * 64 + ManzanX) * 4 + frame address
+	li	$t4, 0x00ff0000
+	sw	$t4, 0($t0)
+	
+	lw 	$ra, 4($sp)	
+	lw 	$fp, 0($sp)		# restaurar puntero de marco del llamador
+	addiu 	$sp, $sp, 24		# restaurar puntero de pila del llamador
+	jr 	$ra			# retornar al código llamador	
+	
+
+newAppleLocation:
+	addiu 	$sp, $sp, -24	# reservar 24 bytes en la pila
+	sw 	$fp, 0($sp)	# guardar puntero de marco del llamador
+	sw 	$ra, 4($sp)	# guardar dirección de retorno del llamador
+	addiu 	$fp, $sp, 20	# setup updateSnake frame pointer
+
+redoRandom:		
+	addi	$v0, $zero, 42	# random int 
+	addi	$a1, $zero, 63	
+	syscall
+	add	$t1, $zero, $a0	# random ManzanX
+	
+	addi	$v0, $zero, 42	# random int 
+	addi	$a1, $zero, 31	
+	syscall
+	add	$t2, $zero, $a0	# random ManzanY
+	
+	lw	$t3, xConversion	# t3 = 64
+	mult	$t2, $t3		# random ManzanY * 64
+	mflo	$t4			# t4 = random ManzanY * 64
+	add	$t4, $t4, $t1		# t4 = random ManzanY * 64 + random ManzanX
+	lw	$t3, yConversion	# t3 = 4
+	mult	$t3, $t4		# (random ManzanY * 64 + random ManzanX) * 4
+	mflo	$t4			# t1 = (random ManzanY * 64 + random ManzanX) * 4
+	
+	la 	$t0, imagen		# cargar dirección del buffer de video
+	add	$t0, $t4, $t0		# t0 = (ManzanY * 64 + ManzanX) * 4 + frame address
+	lw	$t5, 0($t0)		# t5 = valr pixel en  t0
+	
+	li	$t6, 0x4169E1FF		# azul de fondo
+	beq	$t5, $t6, ManzanBuena	# si la ubicacion es un espacio adecuado salta  ManzanBuena
+	j redoRandom
+
+ManzanBuena:
+	sw	$t1, ManzanX
+	sw	$t2, ManzanY	
+
+	lw 	$ra, 4($sp)
 	lw 	$fp, 0($sp)	# restaurar puntero de marco del llamador
 	addiu 	$sp, $sp, 24	# restaurar puntero de pila del llamador
 	jr 	$ra		# retornar al código llamador
